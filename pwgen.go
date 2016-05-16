@@ -22,7 +22,7 @@ var info struct {
 func defineInfo() {
     info.author      = "Daniel Ferreira de Lima"
     info.version     = 1.2
-    info.title       = "-=[  PWGEN - The Go Password Generator  ]=-\n"
+    info.title       = "-=[  PWGEN - The Go Password Generator  ]=- "
     info.contact     = "twitter: @danielfl"
     info.github      = "/danielfl"
 }
