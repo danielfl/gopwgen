@@ -3,7 +3,6 @@ package main
 import(
     "runtime"
     "fmt" 
-    "strings"
     "math/rand"
     "time"
     "sync"
@@ -12,14 +11,40 @@ import(
 ) 
 
 var chars string
+var info struct {
+    author string
+    version float32
+    title string 
+    contact string
+    github string
+}
 
-func showChar(num int,  ch string, goGroup *sync.WaitGroup) { 
+func defineInfo() {
+    info.author      = "Daniel Ferreira de Lima"
+    info.version     = 1.2
+    info.title       = "-=[  PWGEN - The Go Password Generator  ]=-\n"
+    info.contact     = "twitter: @danielfl"
+    info.github      = "/danielfl"
+}
+
+func showChar(num int,  ch string, kn string, goGroup *sync.WaitGroup) { 
     tstamp := time.Now().UnixNano() 
     rand.Seed(tstamp)
     luckn:=rand.Intn(len(ch))
     fmt.Printf("%c", ch[luckn]) 
 
     goGroup.Done()
+}
+func showHeader(s int, n int, ch string){ 
+    fmt.Println(info.title)
+    //header
+    fmt.Printf("conf len[%d] pwn[%d] chars[%s]\n\n", s,n, ch)
+
+    for i := 1 ; i <= int(s / 10)+1 ; i++ {
+        fmt.Print("    '   ",i*10)
+    }
+    fmt.Printf("\n")
+
 }
 
  func stringInSlice(str string, list []string) bool {
@@ -31,12 +56,16 @@ func showChar(num int,  ch string, goGroup *sync.WaitGroup) {
     return false
  }
 
-func main() { 
+func main() {
+    defineInfo() 
 
-    chars:="" 
-    size:=16
-    pwn :=1
-    nargs := len(os.Args)
+    chars   :=""
+    size    :=16
+    pwn     :=1
+    nargs   := len(os.Args)
+    dictmode:= 0
+    kn      := ""
+
     //         0    '    10   '    20   '    30   '    40   '    50   '    60   '    70   '   
     possib := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&.,?+=-" 
 
@@ -50,50 +79,50 @@ func main() {
             chars += possib[52:62]
         }else if arg == "@" {
             chars += possib[62:len(possib)]
-        }else if arg == "-pwn" { 
+        }else if arg == "-pwn" {
             p,err := strconv.Atoi(os.Args[i+1])
             _ = err
             pwn = p
             nargs -= 2
-        }else if arg == "-size" { 
+        }else if arg == "-size" {
             s,err := strconv.Atoi(os.Args[i+1])
             _ = err
             size = s
             nargs -= 2
+        }else if arg == "-dict" {
+            dictmode = 1
+        }else if arg == "-kn" {
+            kn = os.Args[i+1]
+            nargs -= 2 
         }else if arg == "-help" {
-            fmt.Println("PWGEN - The Go password creator: ")
+            fmt.Println(info.title,  info.version)
             fmt.Println("Usage: ")
-            fmt.Printf("%s     [-help] [-size N] [A] [a] [@] [0]\n", os.Args[0])
+            fmt.Printf("%s     [-help] [-size N] [-pwn N] [-kn str] [-dict] [A] [a] [@] [0]\n", os.Args[0])
             fmt.Printf("-help  : this message \n")
-            fmt.Printf("-size N: change the password size from 16 to N \n")
+            fmt.Printf("-size N: change the password size from 16 to N (default 16) \n")
             fmt.Printf("-pwn  N: number of passwords to create \n")
+            fmt.Printf("-dict  : make random password dictionary mode\n")
+            fmt.Printf("-kn str: known pieces of the password (eg. alice).\n\t\t   (not implemented yet)  \n\n") 
             fmt.Printf("A      : add %s for the password char possibilities\n", possib[0:25])
             fmt.Printf("a      : add %s for the password char possibilities\n", possib[26:51])
             fmt.Printf("0      : add %s for the password char possibilities\n", possib[52:61])
             fmt.Printf("@      : add %s for the password char possibilities\n", possib[62:len(possib)])
-            fmt.Printf("null   : all the combinations above within a 16 char password")
+            fmt.Printf("null   : all the combinations above within \n")
 
             os.Exit(0)
-        } 
+        }
     }
 
     if nargs == 1 {
-          chars=possib
+        chars=possib
     }
 
-    fmt.Println("Size :", size)
-    fmt.Println("Chars:", chars)
-
-    fmt.Println("Starting...\n")
-
-    //header
-    fmt.Println("N 0    '    10   '    20   '    30   '    40   '    50")
-    fmt.Printf("N %s\n", strings.Repeat(possib[52:62], 6))
+    if dictmode != 1 {
+        showHeader(size, pwn, chars) 
+    } 
 
     //playing with paralelism just for fun 
-    for loop := 0 ; loop < pwn ; loop++ {
-        fmt.Print  ("P  ")
-
+    for loop := 0 ; loop < pwn ; loop++ { 
         //do the magic
         goGroup := new (sync.WaitGroup) 
         goGroup.Add(size)
@@ -101,7 +130,7 @@ func main() {
         runtime.GOMAXPROCS(4)
         iterations := size 
         for i := 0; i<iterations; i++ {
-           go  showChar(i, chars, goGroup) // create a proc
+           go  showChar(i, chars, kn, goGroup) // create a proc
         } 
         runtime.Gosched()
 
@@ -110,5 +139,7 @@ func main() {
 
         fmt.Println("")
     }
-    fmt.Println("\n\nPassword(s) created..")
+    if dictmode != 1 {
+        fmt.Printf("\n\n%d password(s) created..\n", pwn)
+    }
 } 
