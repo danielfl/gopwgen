@@ -7,7 +7,7 @@ import(
     "time"
     "sync"
     "os"
-    "strconv"
+    "flag"
 ) 
 
 var chars string
@@ -21,7 +21,7 @@ var info struct {
 
 func defineInfo() {
     info.author      = "Daniel Ferreira de Lima"
-    info.version     = 1.2
+    info.version     = 1.3
     info.title       = "-=[  PWGEN - The Go Password Generator  ]=- "
     info.contact     = "twitter: @danielfl"
     info.github      = "/danielfl"
@@ -69,48 +69,42 @@ func main() {
     //         0    '    10   '    20   '    30   '    40   '    50   '    60   '    70   '   
     possib := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&.,?+=-" 
 
-    //read args and add the corresponding chars to the password
-    for i, arg := range os.Args {
-        if arg == "a" {
-            chars += possib[0:25]
-        }else if arg == "A" {
-            chars += possib[26:51]
-        }else if arg == "0" {
-            chars += possib[52:62]
-        }else if arg == "@" {
-            chars += possib[62:len(possib)]
-        }else if arg == "-pwn" {
-            p,err := strconv.Atoi(os.Args[i+1])
-            _ = err
-            pwn = p
-            nargs -= 2
-        }else if arg == "-size" {
-            s,err := strconv.Atoi(os.Args[i+1])
-            _ = err
-            size = s
-            nargs -= 2
-        }else if arg == "-dict" {
-            dictmode = 1
-        }else if arg == "-kn" {
-            kn = os.Args[i+1]
-            nargs -= 2 
-        }else if arg == "-help" {
-            fmt.Println(info.title,  info.version)
-            fmt.Println("Usage: ")
-            fmt.Printf("%s     [-help] [-size N] [-pwn N] [-kn str] [-dict] [A] [a] [@] [0]\n", os.Args[0])
-            fmt.Printf("-help  : this message \n")
-            fmt.Printf("-size N: change the password size from 16 to N (default 16) \n")
-            fmt.Printf("-pwn  N: number of passwords to create \n")
-            fmt.Printf("-dict  : make random password dictionary mode\n")
-            fmt.Printf("-kn str: known pieces of the password (eg. alice).\n\t\t   (not implemented yet)  \n\n") 
-            fmt.Printf("A      : add %s for the password char possibilities\n", possib[0:25])
-            fmt.Printf("a      : add %s for the password char possibilities\n", possib[26:51])
-            fmt.Printf("0      : add %s for the password char possibilities\n", possib[52:61])
-            fmt.Printf("@      : add %s for the password char possibilities\n", possib[62:len(possib)])
-            fmt.Printf("null   : all the combinations above within \n")
+    //parameters
+    dictPtr := flag.Bool("dict",false,"make random password dictionary mode")
+    sizePtr := flag.Int("size", 16, "change the password size from 16 to N (default 16)")
+    pwnPtr  := flag.Int("pwn", 1, "number of passwords to create")
 
-            os.Exit(0)
-        }
+    str:="add "+possib[0:25]+" %s for the password char possibilities"
+    APtr :=        flag.Bool("A",false,str)
+
+    str="add "+possib[26:51]+" %s for the password char possibilities"
+    aPtr:= flag.Bool("a",false,str)
+
+    str="add "+possib[52:61]+" %s for the password char possibilities"
+    zPtr:= flag.Bool("0",false,str)
+
+    str="add "+possib[62:len(possib)]+" %s for the password char possibilities"
+    atPtr:= flag.Bool("@",false,str)
+
+    flag.Parse()
+
+    if *dictPtr {
+        dictmode = 1
+    }
+    pwn = *pwnPtr
+    size = *sizePtr
+
+    if *aPtr  {
+        chars += possib[0:25]
+    }
+    if *APtr  {
+        chars += possib[26:51]
+    }
+    if *zPtr  {
+        chars += possib[52:62]
+    }
+    if *atPtr {
+        chars += possib[62:len(possib)] 
     }
 
     if nargs == 1 {
@@ -119,7 +113,7 @@ func main() {
 
     if dictmode != 1 {
         showHeader(size, pwn, chars) 
-    } 
+    }
 
     //playing with paralelism just for fun 
     for loop := 0 ; loop < pwn ; loop++ { 
@@ -130,7 +124,7 @@ func main() {
         runtime.GOMAXPROCS(4)
         iterations := size 
         for i := 0; i<iterations; i++ {
-           go  showChar(i, chars, kn, goGroup) // create a proc
+           go showChar(i, chars, kn, goGroup) // create a proc
         } 
         runtime.Gosched()
 
