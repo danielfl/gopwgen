@@ -6,7 +6,6 @@ import(
     "math/rand"
     "time"
     "sync"
-    "os"
     "flag"
 ) 
 
@@ -27,13 +26,18 @@ func defineInfo() {
     info.github      = "/danielfl"
 }
 
-func showChar(num int,  ch string, kn string, goGroup *sync.WaitGroup) { 
-    tstamp := time.Now().UnixNano() 
-    rand.Seed(tstamp)
-    luckn:=rand.Intn(len(ch))
-    fmt.Printf("%c", ch[luckn]) 
+func showChar(pass chan string,  ch string, kn string, size int, goGroup *sync.WaitGroup) { 
 
+    password:=""
+    for i:=1 ; i <= size ; i++ {
+        tstamp := time.Now().UnixNano() 
+        rand.Seed(tstamp)
+        luckn:=rand.Intn(len(ch))
+        password+=string(ch[luckn]) 
+    }
+    fmt.Println(password)
     goGroup.Done()
+    pass <-"ok"
 }
 func showHeader(s int, n int, ch string){ 
     fmt.Println(info.title)
@@ -62,7 +66,6 @@ func main() {
     chars   :=""
     size    :=16
     pwn     :=1
-    nargs   := len(os.Args)
     dictmode:= 0
     kn      := ""
 
@@ -104,36 +107,35 @@ func main() {
         chars += possib[52:62]
     }
     if *atPtr {
-        chars += possib[62:len(possib)] 
+        chars += possib[62:len(possib)]
     }
 
-    if nargs == 1 {
+    if len(chars) == 0 {
         chars=possib
     }
 
     if dictmode != 1 {
-        showHeader(size, pwn, chars) 
+        showHeader(size, pwn, chars)
     }
 
-    //playing with paralelism just for fun 
-    for loop := 0 ; loop < pwn ; loop++ { 
-        //do the magic
-        goGroup := new (sync.WaitGroup) 
-        goGroup.Add(size)
+    runtime.GOMAXPROCS(2)
+    pass := make(chan string)
+    for loop := 0 ; loop < pwn ; loop++ {
+        goGroup := new (sync.WaitGroup)
 
-        runtime.GOMAXPROCS(4)
-        iterations := size 
-        for i := 0; i<iterations; i++ {
-           go showChar(i, chars, kn, goGroup) // create a proc
-        } 
+        goGroup.Add(1)
+        go showChar(pass, chars, kn, size, goGroup) // create a proc
         runtime.Gosched()
 
-        //Wait for the password creation being finished
         goGroup.Wait()
-
-        fmt.Println("")
     }
+
+    for  {
+        <-pass
+        break
+    }
+
     if dictmode != 1 {
         fmt.Printf("\n\n%d password(s) created..\n", pwn)
     }
-} 
+}
